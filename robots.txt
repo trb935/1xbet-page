@@ -1,5 +1,8 @@
-User-Agent: *
-Allow: 
+ 
+User-agent: 
+Disallow: 
+
+User-agent: *
 Allow: /
 
 Sitemap: https://bitcoinaviator.com/sitemap.xml
