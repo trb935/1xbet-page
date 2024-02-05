@@ -65,7 +65,7 @@
         var gosterilenVeriler = JSON.parse(localStorage.getItem("gosterilenVeriler")) || [];
         gosterilenVeriler.unshift({ rakam: rakam, tarih: tarih });
         localStorage.setItem("gosterilenVeriler", JSON.stringify(gosterilenVeriler));
-        
+
         rakamlar.shift();
         if (rakamlar.length === 0) {
             // Yeni bir döngü başlatmak için rakamları resetle
