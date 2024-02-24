@@ -1,0 +1,359 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPR Simülasyonu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-start;
+            height: 100vh;
+            margin: 0;
+            overflow-y: auto; /* Sayfa aşağı kaydığında scrollbar görüntüle */
+        }
+
+        #gpr-screen-container {
+            width: calc(100% - 320px);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        #gpr-screen {
+            width: 100%;
+            height: 340px;
+            background-color: #000;
+            position: relative;
+        }
+
+        .structure {
+            position: absolute;
+            background-color: #808080;
+            pointer-events: none;
+        }
+
+        #gpr-settings {
+            width: 300px;
+            background-color: #d3d3d3;
+            padding: 10px;
+            box-sizing: border-box;
+            position: sticky;
+            top: 0; /* Sayfanın üstünde sabit kalacak */
+            z-index: 100; /* Diğer elementlerin üstünde olacak */
+        }
+
+        .settings-section {
+            margin-bottom: 20px;
+        }
+
+        .settings-section select {
+            width: 100%;
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            margin-top: 5px;
+        }
+
+        #device-connection-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        #report-buttons {
+            margin-top: 10px;
+            display: none;
+        }
+
+        #report-buttons button {
+            margin-right: 10px;
+        }
+
+        #chart-container {
+            width: 100%;
+            height: 340px;
+        }
+
+        /* Tüm metinleri kalınlaştır */
+        #gpr-settings *,
+        #device-connection-message {
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* Dil seçeneklerini düzenle */
+        #language-options label {
+            color: #333;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        #language-options select {
+            width: 100%;
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            margin-top: 5px;
+        }
+
+        .xyz-values {
+            margin-top: 10px;
+            color: black;
+        }
+
+        .metal-info {
+            margin-top: 10px;
+            font-weight: bold;
+            border-bottom: 1px solid #ccc;
+        }
+
+    </style>
+</head>
+
+<body onload="maximizeWindow()">
+    <div id="gpr-settings">
+        <h2>Metal & Mineral Detection</h2>
+        <div class="metal-info" id="metal-info" style="display: none;">
+            <div class="metal-info">ALTIN | <span id="altin-yuzde">%15</span></div>
+            <div class="metal-info">BAKIR | <span id="bakir-yuzde">%10</span></div>
+            <div class="metal-info">GÜMÜŞ | <span id="gumus-yuzde">%12</span></div>
+            <div class="metal-info">TİTANYUM | <span id="titanyum-yuzde">%8</span></div>
+            <div class="metal-info">SU | <span id="su-yuzde">%5</span></div>
+        </div>
+        <div class="settings-section">
+            <label for="depth">Derinlik Metre Ayarı:</label>
+            <select id="depth" onchange="showSelectedOption(this, 'Derinlik Metre Ayarı:')">
+                <option value="1">1 Metre</option>
+                <option value="5">5 Metre</option>
+                <option value="10">10 Metre</option>
+                <option value="15">15 Metre</option>
+                <option value="20">20 Metre</option>
+                <option value="30">30 Metre</option>
+                <option value="32">32 Metre</option>
+            </select>
+        </div>
+        <div class="settings-section">
+            <label for="width">Arazi Genişlik Çap Ayarlaması:</label>
+            <select id="width" onchange="showSelectedOption(this, 'Arazi Genişlik Çap Ayarlaması:')">
+                <option value="50">50 Metre</option>
+                <option value="200">200 Metre</option>
+                <option value="500">500 Metre</option>
+                <option value="800">800 Metre</option>
+                <option value="1000">1 Kilometre</option>
+                <option value="2000">2 Kilometre</option>
+                <option value="5000">5 Kilometre</option>
+            </select>
+        </div>
+        <div class="settings-section">
+            <label for="electrode-configuration">Elektrod Dizilimi:</label>
+            <select id="electrode-configuration" onchange="showSelectedOption(this, 'Elektrod Dizilimi:')">
+                <option value="schlumberger">Schlumberger</option>
+                <option value="wenner">Wenner</option>
+                <option value="dipol-dipol">Dipol-dipol</option>
+                <option value="two-way-three-electrode">İki-Yönlü ÜçElektrod</option>
+            </select>
+        </div>
+        <div class="settings-section" id="portcom-options">
+            <label for="portcom">PORTCOM Options (PORTCOM Seçenekleri):</label>
+            <select id="portcom" onchange="showSelectedOption(this, 'PORTCOM Seçenekleri:')">
+                <option value="com1">COM1</option>
+                <option value="com2">COM2</option>
+                <option value="com3" selected>COM3</option>
+                <option value="com4">COM4</option>
+            </select>
+        </div>
+        <button id="device-connection-button" onclick="checkDeviceConnection()">Cihaz Bağlantısı Kontrol</button>
+        <button id="start-button" disabled onclick="startGPR()">Start GPR</button>
+        <div id="report-buttons">
+            <button onclick="printReport()">Raporu Yazdır</button>
+            <button onclick="sendReport()">Raporu Gönder</button>
+        </div>
+        <div id="gif-container" style="display: none;">
+            <a href="http://gifgifs.com/" title="http://gifgifs.com"><img src="http://gifgifs.com//animations/computers-technology/communication-devices/Satellite_dish.gif" border=0 alt="http://gifgifs.com" /></a><br/><a href="http://gifgifs.com/">http://gifgifs.com</a>
+        </div>
+    </div>
+    <div id="gpr-screen-container">
+        <div id="gpr-screen"></div>
+        <div id="chart-container"></div>
+        <div id="xyz-values" class="xyz-values" style="display: none;">X <span style='color: red;'>0</span> Y <span style='color: blue;'>0</span> Z <span style='color: black;'>0</span></div>
+    </div>
+    <div id="device-connection-message"></div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-statistics/7.1.0/simple-statistics.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script>
+        function maximizeWindow() {
+            document.body.requestFullscreen();
+        }
+
+        var gprActive = false;
+        var gprData = [];
+        var gprScreen = document.getElementById("gpr-screen");
+        var startButton = document.getElementById("start-button");
+        var chartContainer = document.getElementById("chart-container");
+        var deviceConnectionMessage = document.getElementById("device-connection-message");
+        var reportButtons = document.getElementById("report-buttons");
+        var xyzValues = document.getElementById("xyz-values");
+
+        function checkDeviceConnection() {
+            deviceConnectionMessage.innerText = "Cihaz Bağlantısı Kontrol Ediliyor...";
+            deviceConnectionMessage.style.display = "block";
+            speakMessage("Cihaz Bağlantısı Kontrol Ediliyor");
+
+            setTimeout(function () {
+                deviceConnectionMessage.innerText = "Cihaz Bağlantısı Başarılı";
+                speakMessage("Cihaz Bağlantısı Başarılı");
+                setTimeout(function () {
+                    deviceConnectionMessage.style.display = "none";
+                    startButton.disabled = false;
+                }, 5000);
+            }, 15000);
+        }
+
+        function startGPR() {
+            if (!gprActive) {
+                document.getElementById("gif-container").style.display = "block";
+                document.getElementById("metal-info").style.display = "block";
+                speakMessage("MTA & OJO Radar GPR taraması başlıyor. Seçtiğiniz parametlerde, " +
+                    document.getElementById("depth").value + " derinlik " +
+                    document.getElementById("width").value + " genişlikte. ALTIN, BAKIR, GÜMÜŞ, TİTANYUM, SU VE TÜM DEĞERLİ DEĞERSİZ METALLER TESPİT EDİLECEK SİSTEMDE KAYITLI TELEFON NUMARANIZA VE CİHAZINIZA GÖNDERİLECEKTİR.");
+                gprActive = true;
+                startButton.innerText = "GPR Başladı";
+                chartContainer.style.display = "block";
+                xyzValues.style.display = "block";
+                setInterval(updateMetalPercentages, 1000); // Yüzdelikleri güncelle
+                simulateGPR();
+            }
+        }
+
+        function simulateGPR() {
+            var interval = setInterval(function () {
+                if (!gprActive) {
+                    clearInterval(interval);
+                    return;
+                }
+
+                var x = Math.floor(Math.random() * 100);
+                var y = Math.floor(Math.random() * 100);
+                var z = Math.floor(Math.random() * 100);
+                createStructure(y);
+                gprData.push(y);
+                updateChart(gprData);
+                updateXYZValues(x, y, z);
+            }, 1000);
+
+            setTimeout(function () {
+                clearInterval(interval);
+                generateReportButton();
+                playSonarSound();
+                document.getElementById("metal-info").style.display = "none"; // Son rapor yazdırıldığında metal bilgilerini gizle
+            }, 120000);
+        }
+
+        function createStructure(y) {
+            var structure = document.createElement("div");
+            structure.className = "structure";
+            structure.style.left = Math.random() * (gprScreen.offsetWidth - 60) + "px";
+            structure.style.bottom = y + "px";
+            var width = Math.random() * 50 + 10;
+            var height = Math.random() * 50 + 10;
+            structure.style.width = width + "px";
+            structure.style.height = height + "px";
+            gprScreen.appendChild(structure);
+        }
+
+        function updateChart(data) {
+            var layout = {
+                title: 'GPR Veri Analizi',
+                xaxis: {
+                    title: 'Zaman (s)'
+                },
+                yaxis: {
+                    title: 'Yükseklik (px)'
+                }
+            };
+
+            var trace = {
+                x: d3.range(data.length),
+                y: data,
+                type: 'scatter'
+            };
+
+            Plotly.newPlot('chart-container', [trace], layout);
+        }
+
+        function updateXYZValues(x, y, z) {
+            xyzValues.innerHTML = "X <span style='color: red;'>" + x + "</span> Y <span style='color: blue;'>" + y + "</span> Z <span style='color: black;'>" + z + "</span>";
+        }
+
+        function showSelectedOption(select, header) {
+            var selectedOption = select.options[select.selectedIndex].text;
+            deviceConnectionMessage.innerText = header + " " + selectedOption;
+            deviceConnectionMessage.style.display = "block";
+            speakMessage(header + " " + selectedOption + " seçildi.");
+            setTimeout(function () {
+                deviceConnectionMessage.style.display = "none";
+            }, 5000);
+        }
+
+        function speakMessage(message) {
+            var speech = new SpeechSynthesisUtterance();
+            speech.lang = 'tr-TR';
+            speech.text = message;
+            window.speechSynthesis.speak(speech);
+        }
+
+        function generateReportButton() {
+            reportButtons.style.display = "block";
+        }
+
+        function playSonarSound() {
+            var audio = new Audio('C:\Users\CASPER\Desktop\Yeni klasör (2)\sonar.mp3');
+            audio.play();
+        }
+
+        function printReport() {
+            speakMessage("ALTIN\nBAKIR\nGÜMÜŞ\nTİTANYUM\nSU\n\nANALİZLER SONUCU: Toprak altında dikkate aldığımız altın, gümüş, bakır metallerine toplu halde rastlanmadı. Yerleşik olarak gömülü bulunamadı.");
+        }
+
+        function sendReport() {
+            speakMessage("SİSTEMDE KAYITLI TELEFON NUMARANIZA RAPORLAR GÖNDERİLECEKTİR.");
+        }
+
+        function updateMetalPercentages() {
+            var altinPercent = getRandomPercentage(1, 100);
+            var bakirPercent = getRandomPercentage(1, 100);
+            var gumusPercent = getRandomPercentage(1, 100);
+            var titanyumPercent = getRandomPercentage(1, 100);
+            var suPercent = getRandomPercentage(1, 100);
+
+            // Yüzdeliklerin güncellenmesi
+            document.getElementById("altin-yuzde").innerText = "%" + altinPercent;
+            document.getElementById("bakir-yuzde").innerText = "%" + bakirPercent;
+            document.getElementById("gumus-yuzde").innerText = "%" + gumusPercent;
+            document.getElementById("titanyum-yuzde").innerText = "%" + titanyumPercent;
+            document.getElementById("su-yuzde").innerText = "%" + suPercent;
+        }
+
+        function getRandomPercentage(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+    </script>
+
+
+</html>
+
